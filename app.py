@@ -1,6 +1,7 @@
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
+import statsmodels.api as sm
 from statsmodels.tsa.arima_process import ArmaProcess
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 from utils import simulate_arma, plot_time_series_acf_pacf, simulate_data, run_regression, generate_correlation_matrix
@@ -10,7 +11,7 @@ st.set_page_config(layout='wide')
 st.title("Simulate processes")
 
 
-tab1, tab2 = st.tabs(['ARMA', 'Linear'])
+tab1, tab2, tab3 = st.tabs(['ARMA', 'Linear', 'Inference'])
 with tab1:
 
     process = st.selectbox("Seleccione el proceso a simular: ", ['AR(1)','AR(2)', 'MA(1)', 'MA(2)'])
@@ -74,3 +75,50 @@ with tab2:
             
             # Display regression summary (R-squared, Adj. R-squared, F-statistic)
             st.write(model.summary())
+
+with tab3:
+
+    # Function to simulate data
+    def simulate_variables(n_samples=100, n_variables=5, random_state=None):
+        np.random.seed(random_state)
+        return np.random.randn(n_samples, n_variables)
+
+    # Function to run a regression and print summary
+    def run_regression(Y, X, description="Regression"):
+        X = sm.add_constant(X)  # Add intercept
+        model = sm.OLS(Y, X)
+        results = model.fit()
+        st.write(f"=== {description} ===")
+        st.write(results.summary())
+        st.write()
+
+    # Main simulation process
+    n_simulations = 12
+    n_samples = 100
+    contador = 0
+
+    for i in range(n_simulations):
+        print(f"Simulation {i+1}")
+        
+        # Step 1: Simulate 3 variables for FRP
+        data = simulate_variables(n_samples, 5, random_state=i)
+        Y = data[:, 0]  # Dependent variable
+        X1, X2, X3 = data[:, 1], data[:, 2], data[:, 3]  # FRP variables
+        X4, X5 = data[:, 4], np.random.randn(n_samples)  # Additional variables
+        
+        # Regression 1: 3 variables (FRP)
+        run_regression(Y, np.column_stack([X1, X2, X3]), f"Regresión {contador}")
+        contador += 1
+        # Regression 2: 4 variables (FRP + X4)
+        run_regression(Y, np.column_stack([X1, X2, X3, X4]), f"Regresión {contador}")
+        contador += 1
+        # Regression 3: 5 variables (FRP + X4 + X5)
+        run_regression(Y, np.column_stack([X1, X2, X3, X4, X5]), f"Regresión {contador}")
+        contador += 1
+        # Regression 4: 3 variables (2 from FRP, 1 outside FRP)
+        run_regression(Y, np.column_stack([X1, X2, X4]), f"Regresión {contador}")
+        contador += 1
+        # Regression 5: 2 variables (both outside FRP)
+        run_regression(Y, np.column_stack([X4, X5]), f"Regresión {contador}")
+        contador += 1
+        st.write("="*60)
